@@ -1,0 +1,30 @@
+---
+import { Image } from "astro:assets";
+import meImage from "../assets/images/me.jpg";
+import { Icon } from "astro-icon/components";
+---
+
+<div class="flex items-center h-24 gap-x-8 mx-8">
+    {/* To be replaced by image */}
+    <Image
+        src={meImage}
+        alt="Me"
+        width={96}
+        height={96}
+        class="rounded-full w-12 h-12"
+    />
+
+    <nav class="h-full flex-grow">
+        <ul class="h-full flex items-center gap-x-4">
+            <li>
+                <a href="/blog">Blogs</a>
+            </li>
+        </ul>
+    </nav>
+
+    <div>
+        <a href="https://github.com/tphbrok">
+            <Icon name="simple-icons:github" class="w-6 h-6" />
+        </a>
+    </div>
+</div>
