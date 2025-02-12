@@ -5,19 +5,26 @@ import { Icon } from "astro-icon/components";
 ---
 
 <div class="flex items-center h-24 gap-x-8 mx-8">
-    {/* To be replaced by image */}
-    <Image
-        src={meImage}
-        alt="Me"
-        width={96}
-        height={96}
-        class="rounded-full w-12 h-12"
-    />
+    <a href="/">
+        <Image
+            src={meImage}
+            alt="Me"
+            width={96}
+            height={96}
+            class="rounded-full w-12 h-12"
+        />
+    </a>
 
     <nav class="h-full flex-grow">
         <ul class="h-full flex items-center gap-x-4">
             <li>
+                <a href="/">Home</a>
+            </li>
+            <li>
                 <a href="/blog">Blogs</a>
+            </li>
+            <li>
+                <a href="/projects">Projects</a>
             </li>
         </ul>
     </nav>
