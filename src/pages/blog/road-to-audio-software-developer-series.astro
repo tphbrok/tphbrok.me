@@ -6,7 +6,7 @@ import dayjs from "dayjs";
 const posts = (await getCollection("blog"))
     .filter((post) => post.id.includes("road-to-audio-software-developer-"))
     .sort(
-        (a, b) => b.data.dateCreated.valueOf() - a.data.dateCreated.valueOf()
+        (a, b) => a.data.dateCreated.valueOf() - b.data.dateCreated.valueOf()
     );
 ---
 
