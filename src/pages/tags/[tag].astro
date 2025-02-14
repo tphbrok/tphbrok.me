@@ -30,6 +30,8 @@ const posts = await getCollection("blog");
     <h1>Tag: <i>'{tag}'</i></h1>
     Every blog post I publish has three tags to categorize them. This list shows
     all blog posts that are tagged with <i>'{tag}'</i>.
+    <br />
+    You can find all tags <a href="/tags">here</a>.
 
     <ul class="mt-8">
         {
@@ -45,7 +47,7 @@ const posts = await getCollection("blog");
                         <a href={`/blog/${post.id}/`}>
                             <h4 class="title">{post.data.title}</h4>
                         </a>
-                        <span class="text-sm">
+                        <span class="text-xs">
                             published{" "}
                             {dayjs(post.data.dateCreated).format(
                                 "MMMM D, YYYY"

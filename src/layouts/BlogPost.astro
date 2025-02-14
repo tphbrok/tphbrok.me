@@ -20,16 +20,16 @@ console.log(id);
     }}
 >
     <article class="flex flex-col gap-y-2">
-        <h1>{title}</h1>
-        <span class="text-sm"
+        <h1 class="mb-0">{title}</h1>
+        <span class="text-xs"
             >published {dayjs(dateCreated).format("MMMM D, YYYY")}</span
         >
-        <ul class="flex gap-x-2">
+        <ul class="flex gap-2 flex-wrap">
             {
                 tags.map((tag) => (
                     <a
                         href={`/tags/${tag}`}
-                        class=" bg-cyan-100  dark:bg-cyan-950 px-2 h-6 rounded-lg leading-[22px]"
+                        class="bg-cyan-100 dark:bg-cyan-950 px-2 h-6 rounded-lg leading-[22px] whitespace-nowrap"
                     >
                         {tag}
                     </a>
