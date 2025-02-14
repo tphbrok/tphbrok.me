@@ -1,0 +1,42 @@
+---
+import { getCollection } from "astro:content";
+import Layout from "../../layouts/Layout.astro";
+
+const posts = await getCollection("blog");
+
+const tags: { name: string; count: number }[] = [];
+
+posts.forEach((post) => {
+    post.data.tags.forEach((tag) => {
+        const existingTag = tags.find(
+            (existingTag) => existingTag.name === tag
+        );
+
+        if (existingTag) {
+            existingTag.count++;
+        } else {
+            tags.push({
+                name: tag,
+                count: 1,
+            });
+        }
+    });
+});
+---
+
+<Layout>
+    <h1>Tags</h1>
+    Every blog post I publish has three tags to categorize them. This list shows
+    all existing tags and includes how many posts have been categorized with that
+    tag.
+
+    <ul class="mt-8">
+        {
+            tags.map(({ count, name }) => (
+                <li>
+                    <a href={`/tags/${name}`}>{name}</a> ({count})
+                </li>
+            ))
+        }
+    </ul>
+</Layout>

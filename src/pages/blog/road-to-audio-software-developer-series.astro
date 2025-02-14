@@ -1,19 +1,21 @@
 ---
-import { getCollection } from "astro:content";
 import Layout from "../../layouts/Layout.astro";
+import { getCollection } from "astro:content";
 import dayjs from "dayjs";
 
-const posts = (await getCollection("blog")).sort(
-    (a, b) => b.data.dateCreated.valueOf() - a.data.dateCreated.valueOf()
-);
+const posts = (await getCollection("blog"))
+    .filter((post) => post.id.includes("road-to-audio-software-developer-"))
+    .sort(
+        (a, b) => b.data.dateCreated.valueOf() - a.data.dateCreated.valueOf()
+    );
 ---
 
 <Layout>
-    <h1>Blogs</h1>
-    This list shows all blog posts I have published, sorted descendingly by date.
-    <br />
-    Every blog post I publish has three tags to categorize them, which you can browse
-    <a href="/tags">here</a>.
+    <h1>Blog series: 'The Road To Becoming An Audio Software Developer'</h1>
+
+    In this series, I explore the audio software development ecosystem, with all
+    its related fields such as music production, signal processing and systems
+    programming.
 
     <ul class="mt-8">
         {
