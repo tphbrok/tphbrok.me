@@ -6,8 +6,6 @@ import dayjs from "dayjs";
 type Props = CollectionEntry<"blog">["data"] & { id: string };
 
 const { title, dateCreated, tags, description, id } = Astro.props;
-
-console.log(id);
 ---
 
 <Layout
