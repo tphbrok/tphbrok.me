@@ -3,9 +3,10 @@ import { getCollection } from "astro:content";
 import Layout from "../../layouts/Layout.astro";
 import dayjs from "dayjs";
 import PostList from "../../components/post-list.astro";
+import { getPosts } from "../../utils/get-posts";
 
 export async function getStaticPaths() {
-    const posts = await getCollection("blog");
+    const posts = await getPosts();
 
     const tags: string[] = [];
 
@@ -24,7 +25,7 @@ export async function getStaticPaths() {
 
 const { tag } = Astro.params;
 
-const posts = (await getCollection("blog"))
+const posts = (await getPosts())
     .filter((post) => post.data.tags.includes(tag))
     .sort(
         (a, b) => b.data.dateCreated.valueOf() - a.data.dateCreated.valueOf()

@@ -73,6 +73,10 @@ const { seo, title } = Astro.props;
             @apply font-semibold text-2xl tracking-tight mt-4;
         }
 
+        h3 {
+            @apply font-semibold text-xl tracking-tight mt-2;
+        }
+
         h4 {
             @apply text-lg;
         }
@@ -110,6 +114,18 @@ const { seo, title } = Astro.props;
 
         [data-footnote-ref]::after {
             content: "]";
+        }
+
+        code {
+            @apply text-sm dark:text-cyan-400 text-cyan-700;
+        }
+
+        article ul {
+            @apply list-disc list-inside;
+        }
+
+        article ul > li {
+            @apply mb-2;
         }
     </style>
 </html>

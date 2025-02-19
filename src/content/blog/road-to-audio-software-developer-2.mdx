@@ -1,0 +1,13 @@
+---
+dateCreated: "19 Feb 2025"
+description: ""
+published: false
+tags: ["audio", "audio-software", "signal-processing"]
+title: "The Road To Becoming An Audio Software Developer #2: Exploring possibilities"
+---
+
+### Creating a very naked CLAP effect
+
+All official code related to CLAP plug-ins is hosted on [free-audio](https://github.com/free-audio)'s GitHub organization, including a repository called [clap-plugins](https://github.com/free-audio/clap-plugins.git) which hosts a bunch of demo/example CLAP plug-ins. Unfortunately, it's not as plug-and-play as it sounds, as the plug-ins in the repository (located in `plugins/plugs`) share a lot of generic code. Additionally, the example plug-ins are written in C++, whereas I would want to use something like Zig or Rust (as if developing audio plug-ins isn't challenging enough).
+
+After some more research, I stumbled upon `src/plugin-template.c` in the [free-audio/clap](https://github.com/free-audio.git) repository, a starter point for a CLAP plug-in written in C, which allows me to fully grasp the details of the requirements of a working CLAP plug-in. It would be easier to use frameworks such as [JUCE](https://juce.com) (C++) or [nih-plug](https://github.com/robbert-vdh/nih-plug) (Rust), but these solutions hide away a lot of implementation details that are crucial in becoming an expert audio software developer.

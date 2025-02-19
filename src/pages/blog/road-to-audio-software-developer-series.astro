@@ -3,8 +3,9 @@ import Layout from "../../layouts/Layout.astro";
 import { getCollection } from "astro:content";
 
 import PostList from "../../components/post-list.astro";
+import { getPosts } from "../../utils/get-posts";
 
-const posts = (await getCollection("blog"))
+const posts = (await getPosts())
     .filter((post) => post.id.includes("road-to-audio-software-developer-"))
     .sort(
         (a, b) => a.data.dateCreated.valueOf() - b.data.dateCreated.valueOf()

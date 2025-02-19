@@ -5,7 +5,7 @@ import dayjs from "dayjs";
 
 type Props = CollectionEntry<"blog">["data"] & { id: string };
 
-const { title, dateCreated, tags, description, id } = Astro.props;
+const { title, dateCreated, tags, description, id, published } = Astro.props;
 ---
 
 <Layout
@@ -18,7 +18,7 @@ const { title, dateCreated, tags, description, id } = Astro.props;
     }}
 >
     <article class="flex flex-col gap-y-2">
-        <h1 class="mb-0">{title}</h1>
+        <h1 class="mb-0">{!published && "[DRAFT] - "}{title}</h1>
         <span class="text-xs"
             >published {dayjs(dateCreated).format("MMMM D, YYYY")}</span
         >

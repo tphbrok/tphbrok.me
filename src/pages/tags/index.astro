@@ -1,12 +1,10 @@
 ---
-import { getCollection } from "astro:content";
 import Layout from "../../layouts/Layout.astro";
-
-const posts = await getCollection("blog");
+import { getPosts } from "../../utils/get-posts";
 
 const tags: { name: string; count: number }[] = [];
 
-posts.forEach((post) => {
+(await getPosts()).forEach((post) => {
     post.data.tags.forEach((tag) => {
         const existingTag = tags.find(
             (existingTag) => existingTag.name === tag

@@ -14,7 +14,10 @@ const { posts } = Astro.props;
         posts.map((post) => (
             <li>
                 <a href={`/blog/${post.id}/`}>
-                    <h4 class="title">{post.data.title}</h4>
+                    <h4 class="title">
+                        {!post.data.published && "[DRAFT] - "}
+                        {post.data.title}
+                    </h4>
                 </a>
                 <span class="text-xs">
                     published{" "}

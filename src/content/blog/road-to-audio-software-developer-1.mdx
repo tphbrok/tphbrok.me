@@ -1,0 +1,35 @@
+---
+dateCreated: "19 Feb 2025"
+description: "To become an audio software developer, some ground rules need to be laid out. What can or can't be done? And which way is the way to go?"
+published: true
+tags: ["audio", "audio-software", "signal-processing"]
+title: "The Road To Becoming An Audio Software Developer #1: Exploring possibilities and ideas"
+---
+
+Becoming an audio software developer is cool and all, but where do I even start? Where do I end up? And what will the road be like? I have a vague idea of the possibilities and the impossibilities, the impossibilities being creating a digital audio workstation (abbreviated to DAW from this post onwards) to compete with the major existing ones, such as FL Studio, Ableton, Cubase, Logic Pro, and many more. David Rowland nicely summarizes the complexities of creating an all-purpose DAW in [this video](https://www.youtube.com/watch?v=GMlnh6_9aTc), successfully convincing most viewers of not building a DAW themselves. Ironically, the talk ends with him looking for new users of his own product Tracktion Engine, _a DAW engine_, making me think this talk is partially meant to scare away competition and gain users. Perhaps I'm wrong about this, I could very well be, because the complex problems David mentions are still valid, but they're not impossible to solve. Nevertheless, creating my own DAW sounds intriguing and would be an end goal in this journey, perhaps sharing its place with running accurate audio hardware modelling, to the likes of Universal Audio's [UAD plug-ins](https://www.uaudio.com/uad-plugins.html).
+
+But what about the possibilities?
+
+## Creating audio plug-ins
+
+Creating an audio plug-in (which [Wikipedia](https://en.wikipedia.org/wiki/Audio_plug-in) defines as _'a plug-in that can add or enhance audio-related functions in a computer program, typically a digital audio workstation'_ is a very possible occupation (feeling very _atomic_, if you will), albeit plug-in APIs tend to be cumbersome to implement.
+
+Steinberg has ruled the plug-in space for ages, with their Virtual Studio Technology (VST) plug-in format, introducing VST2 at some point, and then deprecating that in favour of VST3. Distributing a VST plug-in isn't straightforward unfortunately, as they either offer a proprietary license or an open source license. The proprietary one requires developers to receive written permission from Steinberg to distribute the binary, and the plug-in needs to adhere to strict VST usage guidelines. Other plug-in formats, such as Apple's Audio Units (AU) or Avid Technology's Real Time AudioSuite (RTAS) or Avid Audio Extension (AAX), seem to be closely related to (or even purposefully built for) the DAW produced by the same company.
+
+The newest kid on the block is u-he and Bitwig's [CLever Audio Plug-in (CLAP)](https://cleveraudio.org/) format. It's open source (MIT license) and allegedly more performant than its older friends, and plug-in and DAW developers are slowly but surely supporting CLAP more and more. Luckily, its relative low adoption (probably due to being so young) is countered _hard_ by its developers creating [clap-wrapper](https://github.com/free-audio/clap-wrapper), which wraps CLAP plug-ins in other plug-in formats (VST3 and AUv2 at the time of writing) or as a standalone. Its core idea is an implementation of a CLAP host in the other plug-in formats. Having my plug-in distributed as CLAP, VST3 and/or AUv2 covers the majority of available DAWs, so developing it as CLAP and using clap-wrapper afterwards sounds like the way to go for me.
+
+### But what even is a '_plug-in format_'?
+
+I've been mentioning plug-in formats throughout this post, and I have a vague idea of how they work. If you'd ask me to explain the differences between them, I'd be done after mentioning that they have been created by different companies or people. At this point, it would be time wasted to find and examine all formats, so I'll be researching just CLAP for now. After building a CLAP plug-in, I can then use clap-wrapper to create a VST3 version without knowing the details of the VST3 API, although at some point I would be interested in digging into that.
+
+Like I do in web development, it makes sense to realize a minimum viable product (MVP), which in case of an audio plug-in would be a very naked plug-in that does nothing and only implements the bare minimum to make a CLAP host (so a DAW) accept and load it. Audio plug-ins come in two variants (generators and effects), of which the latter is easier to implement, because implementing a generator requires handling of MIDI events and voices, whereas implementing an effect theoretically just requires processing audio from its input to its output. After some initial research, implementing a basic plug-in requires enough effort to dedicate one of the next posts in this series to that, rather than cramming it into this one.
+
+## More ideas (for the future)
+
+Like with any other programming discipline, possibilities are endless, so I'll narrow it down to what I would _want_ to achieve, rather than what I _could_ achieve.
+
+- _Kilohearts' plug-in ecosystem_ &mdash; this is amazing and a fine piece of engineering, and recreating one of my own is definitely worth a try.
+- _A bedroom producer DAW_ &mdash; creating a one-size-fits-all DAW is too much of an undertaking for myself alone, but creating a DAW that fits the typical bedroom producer workflow is realistic. Functionality such as recording and loading expensive hardware emulation plug-ins mostly belong to professional-grade studios, and not so much to aspiring producers under the age of 20, who (without trying to sound demeaning) just want to compose music from samples and generator plug-ins. I've belonged to that group since I started, and I still do. I do have a set-up with a dedicated external audio interface, professional speakers and other hardware, but my current workflow could easily still work with just a laptop and a pair of headphones.
+- _A programmable effect plug-in_ &mdash; at the core of an effect plug-in is a simple function that takes the input samples, does its magic to it, and outputs it again. On one of my mind walks (as I'd like to call those periods during which I purposefully keep external occupation away from my mind, just to let it wander) I imagined having a plug-in that allows code to be entered that will be used to process the input samples. Sounds feasible!
+
+I'll undoubtedly have more ideas in the future, but for now, this should inspire me (and hopefully you) enough to continue this journey.
