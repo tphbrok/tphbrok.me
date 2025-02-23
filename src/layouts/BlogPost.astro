@@ -55,23 +55,27 @@ const hasNextPost = fs.existsSync(
                         {postNumber > 0 && (
                             <i>
                                 the previous post{" "}
-                                <a
-                                    href={`/blog/${id.replace(/-\d+$/, "")}-${postNumber - 1}`}
-                                >
-                                    here
-                                </a>
-                                ,
+                                <span class="whitespace-nowrap">
+                                    <a
+                                        href={`/blog/${id.replace(/-\d+$/, "")}-${postNumber - 1}`}
+                                    >
+                                        here
+                                    </a>
+                                    ,
+                                </span>
                             </i>
                         )}
                         {hasNextPost && (
                             <i>
                                 the next post{" "}
-                                <a
-                                    href={`/blog/${id.replace(/-\d+$/, "")}-${postNumber + 1}`}
-                                >
-                                    here
-                                </a>
-                                ,
+                                <span class="whitespace-nowrap">
+                                    <a
+                                        href={`/blog/${id.replace(/-\d+$/, "")}-${postNumber + 1}`}
+                                    >
+                                        here
+                                    </a>
+                                    ,
+                                </span>
                             </i>
                         )}
                         or all posts in this series{" "}
