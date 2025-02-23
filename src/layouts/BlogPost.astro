@@ -2,10 +2,21 @@
 import type { CollectionEntry } from "astro:content";
 import Layout from "./Layout.astro";
 import dayjs from "dayjs";
+import fs from "fs";
+import path from "path";
 
 type Props = CollectionEntry<"blog">["data"] & { id: string };
 
 const { title, dateCreated, tags, description, id, published } = Astro.props;
+
+const postNumber = parseInt(id.split("-").pop()!);
+
+const hasNextPost = fs.existsSync(
+    path.join(
+        process.cwd(),
+        `./src/content/blog/${id.replace(/-\d+$/, "")}-${postNumber + 1}.mdx`
+    )
+);
 ---
 
 <Layout
@@ -39,8 +50,31 @@ const { title, dateCreated, tags, description, id, published } = Astro.props;
             {
                 new RegExp(/-\d+$/).test(id) && (
                     <i>
-                        This blog post is part of a blog series. You can find
-                        all posts in this series{" "}
+                        This blog post is {!hasNextPost && `the latest`} part of
+                        a blog series. You can find
+                        {postNumber > 0 && (
+                            <i>
+                                the previous post{" "}
+                                <a
+                                    href={`/blog/${id.replace(/-\d+$/, "")}-${postNumber - 1}`}
+                                >
+                                    here
+                                </a>
+                                ,
+                            </i>
+                        )}
+                        {hasNextPost && (
+                            <i>
+                                the next post{" "}
+                                <a
+                                    href={`/blog/${id.replace(/-\d+$/, "")}-${postNumber + 1}`}
+                                >
+                                    here
+                                </a>
+                                ,
+                            </i>
+                        )}
+                        or all posts in this series{" "}
                         <a href={`/blog/${id.replace(/-\d+$/, "-series")}`}>
                             here
                         </a>
@@ -50,6 +84,29 @@ const { title, dateCreated, tags, description, id, published } = Astro.props;
             }
 
             <slot />
+
+            {
+                hasNextPost ? (
+                    <p class="text-center">
+                        <i>
+                            There's more to read! Continue to
+                            <a
+                                href={`/blog/${id.replace(/-\d+$/, "")}-${postNumber + 1}`}
+                            >
+                                the next post
+                            </a>
+                            .
+                        </i>
+                    </p>
+                ) : (
+                    <p class="text-center">
+                        <i>
+                            That's all! Feel free to read something else from{" "}
+                            <a href="/blog">my other blog posts</a>.
+                        </i>
+                    </p>
+                )
+            }
         </div>
     </article>
 </Layout>

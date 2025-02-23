@@ -1,13 +1,336 @@
 ---
-dateCreated: "19 Feb 2025"
-description: ""
-published: false
+dateCreated: "23 Feb 2025"
+description: "An unexpected deep dive into creating a CLAP plug-in from scratch in C."
+published: true
 tags: ["audio", "audio-software", "signal-processing"]
-title: "The Road To Becoming An Audio Software Developer #2: Exploring possibilities"
+title: "The Road To Becoming An Audio Software Developer #2: First steps in CLAP City"
 ---
 
-### Creating a very naked CLAP effect
+_**Warning**: this post turned into quite the technical deep dive with a lot of debugging and C programming &mdash; which I really liked and will continue to do &mdash; with which I'm assuming that anyone reading it has enough existing knowledge about C, compiling and debugging to understand it (not calling myself an advanced C programmer here, I just happened to understand what I did so far)._
 
-All official code related to CLAP plug-ins is hosted on [free-audio](https://github.com/free-audio)'s GitHub organization, including a repository called [clap-plugins](https://github.com/free-audio/clap-plugins.git) which hosts a bunch of demo/example CLAP plug-ins. Unfortunately, it's not as plug-and-play as it sounds, as the plug-ins in the repository (located in `plugins/plugs`) share a lot of generic code. Additionally, the example plug-ins are written in C++, whereas I would want to use something like Zig or Rust (as if developing audio plug-ins isn't challenging enough).
+As discussed in [the previous post](/blog/road-to-audio-software-developer-1), the first goal I want to accomplish is building a basic CLAP plug-in, as simple as possible, as close as possible to the bones of the CLAP plug-in format. All official code related to CLAP plug-ins is hosted on [free-audio](https://github.com/free-audio)'s GitHub organization, including a repository called [clap-plugins](https://github.com/free-audio/clap-plugins.git) which hosts a bunch of demo/example CLAP plug-ins. Unfortunately, it's not as plug-and-play as it sounds, as the plug-ins in the repository (located in `plugins/plugs`) share a lot of generic code. Additionally, the example plug-ins are written in C++, whereas I would want to use something like Zig or Rust (as if developing audio plug-ins isn't challenging enough).
 
-After some more research, I stumbled upon `src/plugin-template.c` in the [free-audio/clap](https://github.com/free-audio.git) repository, a starter point for a CLAP plug-in written in C, which allows me to fully grasp the details of the requirements of a working CLAP plug-in. It would be easier to use frameworks such as [JUCE](https://juce.com) (C++) or [nih-plug](https://github.com/robbert-vdh/nih-plug) (Rust), but these solutions hide away a lot of implementation details that are crucial in becoming an expert audio software developer.
+After some more research, I stumbled upon `src/plugin-template.c` in the [free-audio/clap](https://github.com/free-audio/clap.git) repository, a starter point for a CLAP plug-in written in C, which allows me to fully grasp the details of the requirements of a working CLAP plug-in. It would be easier to use frameworks such as [JUCE](https://juce.com) (C++) or [nih-plug](https://github.com/robbert-vdh/nih-plug) (Rust), but these solutions hide away a lot of implementation details that are crucial in becoming an expert audio software developer.
+
+Deserving of a worthy mention is [Nakst's brief CLAP tutorial series](https://nakst.gitlab.io/tutorial/clap-part-1.html), although its content is at least 3 years old (looking at the Git history of the linked C++ source files). I don't think the CLAP API has drastically changed since then, but it's something to keep in mind.
+
+### Step 1: Setting up files, tools and commands
+
+_If you're just looking for the end result of this blog post, I've created [a repository](https://github.com/tphbrok/minimal-clap-plugin-c) which houses everything mentioned in this post, and nothing else._
+
+Diving into the deep end by going with Zig or Rust from the get-go is a terrible idea. The CLAP header files are written in C with a possibility of using a C++ glue layer, but for now, using C keeps me grounded and close to the belly of the beast. I can use the aforementioned `plugin-template.c` as a reference, but I'm not going to start copying and pasting code, because I want to understand every part of what I'm building. The goal of this step is to compile something to a `.clap` file, which a CLAP host will happily accept and load, even if nothing is actually running or initialized.
+
+Fortunately, the guys and gals of **free-audio** also provide me with [free-audio/clap-host](https://github.com/free-audio/clap-host.git), acting as a minimal CLAP host, and [free-audio/clap-info](https://github.com/free-audio/clap-info.git), a command-line tool to inspect and validate a CLAP plug-in. I'll use the latter during development, because it compiles _much_ faster in case I want to insert some debugging statements when validating my CLAP plug-ins.
+
+Time to get to work! I've created a new folder `basic-clap-plugin-c`, and in there I run
+
+```sh
+# Initialize the Git repository
+git init
+
+# Add clap and clap-info as Git submodules,
+# so they can be kept up-to-date
+git submodule add git@github.com:free-audio/clap.git libs/clap-info
+git submodule add git@github.com:free-audio/clap-info.git tools/clap-info
+
+# Initialize clap-info's submodules
+cd tools/clap-info
+git submodule init && git submodule update
+```
+
+Next, I created a basic Makefile to manage build and run commands. I've also included build commands to build `clap-info`, so I can make changes where needed to debug any errors in my CLAP plug-in.
+
+```sh
+build: src/plugin.c
+	rm -rf build
+	mkdir build
+	gcc -Wall -shared -fPIC -o ./build/plugin src/plugin.c
+
+build-clap-info:
+	cd tools/clap-info && cmake -Bbuild && cmake --build build
+
+run-clap-info: src/plugin.c
+	make build-clap-info
+	make build
+	./tools/clap-info/build/clap-info ./build/plugin
+```
+
+Now, as soon as I create `src/plugin.c` and run `make run-clap-info`, it compiles my CLAP plug-in and `clap-info`, and runs `clap-info` to validate the compiled CLAP plug-in directly.
+
+With an empty `plugin.c`, running `make run-clap-info` results in a classical
+
+```sh
+# ... bunch of make logs
+make: *** [clap-info] Segmentation fault: 11
+```
+
+Great, we can start building the plug-in, despite the fact that this error is very hard to debug, because a segmentation fault basically means that the OS decided to kill the program, because it tried to access something it shouldn't have. And because it happens in a compiled program, we're not getting a stack trace.
+
+### Step 2: A (shallow) deep dive into the Apple's Core Foundation
+
+There's probably a cleaner way to find out what's wrong, but for now, inserting a simple logging statement at random places in `clap-info` tells me where the error happens. After moving around
+
+```cpp
+std::cout << "test" << std::endl;
+```
+
+for a bit, I found out that the program exits when running
+
+```cpp
+auto db = CFBundleGetDataPointerForName(bundle, CFSTR("clap_entry"));
+```
+
+which is Apple's way (which makes perfect sense since I'm rocking a MacBook Pro) of trying to load a symbol with a given name, which in this case is 'clap_entry', returning a data pointer to the symbol in the provided executable (see [the `CFBundleGetDataPointerForName` documentation](https://developer.apple.com/documentation/corefoundation/1537120-cfbundlegetdatapointerforname)). Looks like I have to get my hands dirty on Core Foundation for a bit to figure out what's wrong.
+
+Luckily this isn't a dead end yet, because it's trying to load a symbol from an empty source file!
+
+If I add a basic (surely incorrect) exported symbol to `plugin.c`, like
+
+```c
+__attribute__((visibility("default"))) int clap_entry = 1;
+```
+
+and consecutively run
+
+```sh
+nm build/plugin
+```
+
+I get a summary of all exported symbols, which in case of `build/plugin` is
+
+```
+0000000000004000 D _clap_entry
+```
+
+Unfortunately, running `make run-clap-info` still crashes, with the same error when running the same line of code. If I log the result of the function call right before the crashing one, which is
+
+```cpp
+auto bundle = CFBundleCreate(kCFAllocatorDefault, bundleURL);
+```
+
+the result is `0x0`, which `CFBundleCreate` returns if it failed to load the bundle. This remembered me of the fact that MacOS wants to have executables packaged up nicely in a specific format and bundle, including metadata files like `Info.plist` and `PkgInfo`. Moreover, if I Google `Info.plist`, it shows me an XML file that has properties like `CFBundleExecutable` and `CFBundleName`. This might be what I was missing!
+
+### Step 3: Building a nice Apple package
+
+It's time to create a template output directory for the plugin executable to end up in, which `CFBundleCreate` will happily accept. I've created a folder in the root folder of the repository, which contains a bunch of folders, subfolders and metadata files, derived (but not copied!) from another open-source CLAP plug-in I found on GitHub. The highlights of the new output folder are where the executable will end up, which is `plugin.clap/Contents/MacOS/plugin` and the metadata in `Info.plist`, which is
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist>
+  <dict>
+    <key>CFBundleExecutable</key>
+    <string>plugin</string>
+    <key>CFBundleIdentifier</key>
+    <string>me.tphbrok.plugin</string>
+    <key>CFBundleName</key>
+    <string>plugin</string>
+    <key>CFBundleDisplayName</key>
+    <string>plugin</string>
+    <key>CFBundlePackageType</key>
+    <string>BNDL</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    <key>CFBundleVersion</key>
+    <string>1.0.0</string>
+  </dict>
+</plist>
+```
+
+I do need to make some changes now in the Makefile, namely
+
+```diff
+build:
+-   gcc -Wall -shared -fPIC -o ./build/plugin src/plugin.c
++   gcc -Wall -shared -fPIC -o ./plugin.clap/Contents/MacOS/plugin src/plugin.c
+
+...
+
+run-clap-info: src/plugin.c
+	make build-clap-info
+	make build
+-	./tools/clap-info/build/clap-info ./build/plugin
++   ./tools/clap-info/build/clap-info ./plugin.clap
+
+```
+
+Now, running `make run-clap-info` again, `CFBundleCreate` returns `0x140e0b810` instead of `0x0`, meaning that the bundle is successfully loaded. Progress &mdash; time to get my debug logging statement out of my toolbox again.
+
+I expected the next crashing statement to be
+
+```cpp
+auto version = entry->clap_version;
+```
+
+since it's trying to read `clap_version` from my dummy `clap_entry` value (an integer with value 1), but it results in "1.0.0" being outputted. Funnily enough, the `main.cpp` level parent function of the previously crashing statement typecasts `entry` to be of type `clap_plugin_entry_t`, which initializes `clap_version` to `1.0.0`, despite the value missing in my value.
+
+Where it does crash now, which does not come as a surprise to me, is
+
+```cpp
+entry->init(clap.c_str());
+```
+
+of which the lack of surprise comes from the fact that `entry` definitiely does _not_ have `init` implemented.
+
+If I compose a new `clap_entry` that implements the absolute bare minimum that conforms to the `clap_plugin_entry_t` type, I end up with
+
+```c
+#include "../libs/clap/include/clap/clap.h"
+
+static bool entry_init(const char *plugin_path) { return true; }
+
+static void entry_deinit(void) {}
+
+static const void *entry_get_factory(const char *factory_id) { return NULL; }
+
+CLAP_EXPORT const clap_plugin_entry_t clap_entry = {
+    .clap_version = CLAP_VERSION_INIT,
+    .init = entry_init,
+    .deinit = entry_deinit,
+    .get_factory = entry_get_factory};
+```
+
+Now, `entry->init(clap.c_str());` succeeds (according to my expert debug logging statements). Onwards!
+
+### Step 4: Perseverance in debugging
+
+Where it crashes now, perhaps not that surprisingly, is the second line of
+
+```cpp
+auto fac = (clap_plugin_factory_t *)entry->get_factory(CLAP_PLUGIN_FACTORY_ID);
+auto plugin_count = fac->get_plugin_count(fac);
+```
+
+My `entry_get_factory()` implementation returns `NULL`, so running `fac->get_plugin_count(fac)` logically crashes. Let me fix that.
+
+```c
+// ...
+
+// New
+static uint32_t plugin_factory_get_plugin_count(const clap_plugin_factory_t *factory) {
+  return 1; // untrue, but required to keep clap-info from crashing
+}
+
+// New
+static const clap_plugin_factory_t factory = {
+    .get_plugin_count = plugin_factory_get_plugin_count,
+};
+
+
+// static const void *entry_get_factory(const char *factory_id) { return NULL; }
+// replaced by
+static const void *entry_get_factory(const char *factory_id) {
+  return &factory;
+}
+
+// ...
+```
+
+Now, it crashes when trying to run
+
+```cpp
+auto desc = fac->get_plugin_descriptor(fac, plug);
+```
+
+which again makes sense, because I haven't defined `get_plugin_descriptor`, which is a property of `clap_plugin_factory_t`. Let me go ahead and implement it.
+
+```c
+// ...
+
+// New
+// the only properties that clap-info reads
+static const clap_plugin_descriptor_t desc = {
+    .id = "me.tphbrok.plugin",
+    .name = "Plugin",
+    .features = (const char *[]){"effect", NULL},
+};
+
+// New
+static const clap_plugin_descriptor_t *
+get_plugin_descriptor(const struct clap_plugin_factory *factory,
+                      uint32_t index) {
+  return &desc;
+}
+
+static const clap_plugin_factory_t factory = {
+    .get_plugin_count = plugin_factory_get_plugin_count,
+    .get_plugin_descriptor = get_plugin_descriptor, // Added
+};
+
+// ...
+```
+
+### Step 5: Almost there!
+
+This endless session of debugging and creating a minimum CLAP plug-in implementation from scratch is slowly coming to an actual end. Running `clap-info` now when trying to call the following function that is still missing from my implementation:
+
+```cpp
+auto inst = fac->create_plugin(fac, host, desc->id);
+```
+
+I'll add a basic implementation of `create_plugin`, where a quick inspection of what `clap-info` wants to do with the created plug-in reveals that I'll need to implement properties `init`, `activate`, `deactivate` and `destroy` of type `clap_plugin_t` (which `create_plugin` returns).
+
+```c
+// ...
+
+static bool plugin_init(const struct clap_plugin *plugin) { return true; }
+
+static void plugin_destroy(const struct clap_plugin *plugin) {}
+
+static bool plugin_activate(const struct clap_plugin *plugin,
+                            double sample_rate, uint32_t min_frames_count,
+                            uint32_t max_frames_count) {
+  return true;
+}
+
+static void plugin_deactivate(const struct clap_plugin *plugin) {}
+
+clap_plugin_t plugin = {
+    .desc = &desc,
+    .init = plugin_init,
+    .destroy = plugin_destroy,
+    .activate = plugin_activate,
+    .deactivate = plugin_deactivate,
+};
+
+static const clap_plugin_t *
+create_plugin(const struct clap_plugin_factory *factory,
+              const clap_host_t *host, const char *plugin_id) {
+  return &plugin;
+}
+
+static const clap_plugin_factory_t factory = {
+    .get_plugin_count = plugin_factory_get_plugin_count,
+    .get_plugin_descriptor = get_plugin_descriptor,
+    .create_plugin = create_plugin, // Added
+};
+
+// ...
+```
+
+Now, `clap-info` crashes when trying to check a bunch of plug-in metadata properties which I don't need at this moment, such as `annExt`, `audioPorts`, `notePorts`, `paramShow` and `otherExt`, which I can skip by adding `--brief` when running `clap-info`.
+
+Guess what `clap-info` now outputs?
+
+```json
+{
+    "clap-version": "1.2.5",
+    "file": "./plugin.clap",
+    "plugin_count": 1,
+    "plugins": [
+        {
+            "descriptor": {
+                "id": "me.tphbrok.plugin",
+                "name": "Plugin"
+            },
+            "extensions": null,
+            "plugin-index": 0
+        }
+    ]
+}
+```
+
+I think this milestone is big enough to call an end to this post.
