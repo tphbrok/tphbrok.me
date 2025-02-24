@@ -1,0 +1,279 @@
+---
+dateCreated: "24 Feb 2025"
+description: "Converting a minimal CLAP plug-in from C to Zig turns out to be easier than I thought."
+published: false
+tags: ["audio-software", "CLAP-plug-in", "zig"]
+title: "The Road To Becoming An Audio Software Developer #3: Converting the minimal CLAP plug-in from C to Zig"
+---
+
+Likely not continuing development on what I created in [the previous post](/blog/road-to-audio-software-developer-2), because I realized I should first take a shot at converting `minimal-clap-plugin-c` to a Zig codebase, now that it's still compact. Writing audio plug-ins in plain C feels like it would be a real accomplishment, but the tradeoffs compared to writing it in Zig convinced me to start with Zig sooner rather than later.
+
+### Step 1: Setting up the new repository
+
+_If you're just looking for the end result of this blog post, I've created [a repository](https://github.com/tphbrok/minimal-clap-plugin-zig) which houses everything mentioned in this post, and nothing else._
+
+I created a new folder `minimal-clap-plugin-zig`, initialized it for Zig and added the required submodules similar to how I did `minimal-clap-plugin-c`, with
+
+```sh
+# Initialize the Git repository
+git init
+
+# Initialize Zig
+zig init
+
+# Add clap and clap-info as Git submodules,
+# so they can be kept up-to-date
+git submodule add git@github.com:free-audio/clap.git libs/clap
+git submodule add git@github.com:free-audio/clap-info.git tools/clap-info
+
+# Initialize clap-info's submodules
+cd tools/clap-info
+git submodule init && git submodule update
+```
+
+Afterwards, I deleted a bunch of code from `src/main.zig` (also renaming it to `plugin.zig`), I deleted `src/root.zig` (because I'm not building a Zig library), and I removed a bunch of boilerplate Zig build system calls from `build.zig`. I ended up with `src/plugin.zig` being
+
+```zig
+const std = @import("std");
+
+pub fn main() !void {
+    std.debug.print("Zig CLAP plug-in");
+}
+```
+
+and `build.zig` being
+
+```zig
+const std = @import("std");
+
+pub fn build(b: *std.Build) void {
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
+
+    const exe = b.addExecutable(.{
+        .name = "minimal-clap-plugin-zig",
+        .root_source_file = b.path("src/plugin.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    b.installArtifact(exe);
+}
+```
+
+of which I have to admit that the contents of `build.zig` are probably wrong. In `minimal-clap-plugin-c`, the `gcc` build command used compiles the source code to a dynamically linked library, but `build.zig` seems to only create a simple executable. Nevertheless, I copied the contents of the `Makefile` of the previous post, and changed `make build` to
+
+```sh
+build:
+  zig build
+  mv ./zig-out/bin/minimal-clap-plugin-zig ./plugin.clap/Contents/MacOS/plugin
+```
+
+where I need `mv` because `zig build` writes the output to `zig-out`, and I need it to be buried in `plugin.clap`.
+
+If I run `make run-clap-info` now, I am presented with the following error:
+
+```
+clap_entry returned a nullptr
+either this plugin is not a CLAP or it has exported the incorrect symbol.
+```
+
+With the repository set-up and `clap-info` correctly loading a Core Foundation bundle, it's time to dig into Zig (ha!) to figure out how I can compile it to what I need.
+
+### Step 2: Getting Zig to give me the right output
+
+I need to end up with a shared library, which will use some C types from `libs/clap` &mdash; meaning I have two steps to complete: somehow 'import' `libs/clap` in my Zig code, and making the necessary changes to compile to a file which exposes the necessary symbols.
+
+#### Step 2.1: Importing the `clap` C library in Zig
+
+Luckily, Zig interoperates very smoothly with C. All I need to do to use the `clap` C code in Zig code is add
+
+```zig
+const clap = @cImport({
+    @cInclude("../libs/clap/include/clap/clap.h");
+});
+```
+
+to `src/plugin.zig`, and to make some changes to `build.zig`, namely replacing `b.addExecutable` by `b.addSharedLibrary` and making sure `libs` is included in compilation. The file `build.zig` now contains
+
+```zig
+const std = @import("std");
+
+pub fn build(b: *std.Build) void {
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
+
+    const dylib = b.addSharedLibrary(.{
+        .name = "minimal-clap-plugin-zig",
+        .root_source_file = b.path("src/plugin.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    dylib.addIncludePath(b.path("libs"));
+
+    b.installArtifact(dylib);
+}
+```
+
+Running `make build` now results in no errors.
+
+#### Step 2.2: Compiling to a binary which exposes `clap_entry`
+
+Now that I have `clap` header files usable in my Zig code (which Zig handily converts/infers to Zig types, on-the-go), I can start implementing the required exported symbols so that `clap-info` starts recognizing the compiled binary as a CLAP plug-in.
+
+Despite being incomplete, I added an exported variable `clap_entry` to `src/plugin.zig`, which looks like
+
+```zig
+export const clap_entry = clap.clap_plugin_entry{
+    .clap_version = .{ .major = 1, .minor = 0, .revision = 0 },
+};
+```
+
+Small sidenote, in the C implementation I used `CLAP_VERSION_INIT` as a value for `clap_entry.clap_version`, but somehow the Zig compiler fails to infer a type or value from that C symbol.
+
+If I now run
+
+```sh
+nm plugin.clap/Contents/MacOS/plugin 
+```
+
+to view the exported symbols of the produced binary, I get more than I did with the C version of the plug-in, namely
+
+```
+00000000000004d0 s _Target.Cpu.Feature.Set.empty
+0000000000008000 s _Target.aarch64.cpu.generic
+00000000000005e8 s ___anon_280
+0000000000008080 d ___dso_handle
+0000000000008080 d __mh_dylib_header
+0000000000008048 s _builtin.cpu
+00000000000004fa s _builtin.link_mode
+0000000000000500 s _builtin.os
+00000000000004f9 s _builtin.output_mode
+00000000000004c8 s _builtin.zig_backend
+00000000000005c0 S _clap_entry <----------------
+00000000000005b8 s _start.native_os
+00000000000004f8 s _start.simplified_logic
+0000000000008080 d dyld_private
+                 U dyld_stub_binder
+```
+
+in which I've marked the row of interest with an arrow &mdash; `clap_entry` is there! Running `make run-clap-info` now 'nicely' results in a segmentation fault again, similar to the previous post.
+
+### Step 3: Implementing the required CLAP attributes
+
+It is now time to lift `src/plugin.zig` to a Zig version of the final `src/plugin.c` of the previous post. While doing this, I again inserted debug logging statements in `clap-info`'s code to make sure I'm making progress.
+
+The process of getting to the end result is basically the same as in the previous post, so instead of walking through the same steps again, I'll share the end result and note some important things.
+
+The code that led to `clap-info` outputting the exact same output as with `minimal-clap-plugin-c` is
+
+```zig
+const std = @import("std");
+const clap = @cImport({
+    @cInclude("../libs/clap/include/clap/clap.h");
+});
+
+const desc: clap.clap_plugin_descriptor = .{
+    .id = "me.tphbrok.plugin",
+    .name = "Plugin",
+    .features = &[_]?[*:0]const u8{
+        null,
+    },
+};
+
+fn plugin_init(p: [*c]const clap.clap_plugin) callconv(.C) bool {
+    _ = p;
+    return true;
+}
+
+fn plugin_destroy(p: [*c]const clap.clap_plugin) callconv(.C) void {
+    _ = p;
+}
+
+fn plugin_activate(
+    p: [*c]const clap.clap_plugin, 
+    sample_rate: f64, 
+    min_frames_count: u32, 
+    max_frames_count: u32
+) callconv(.C) bool {
+    _ = p;
+    _ = sample_rate;
+    _ = min_frames_count;
+    _ = max_frames_count;
+
+    return true;
+}
+
+fn plugin_deactivate(_: [*c]const clap.clap_plugin) callconv(.C) void {}
+
+const plugin: clap.clap_plugin_t = .{
+    .desc = &desc,
+    .init = &plugin_init,
+    .destroy = &plugin_destroy,
+    .activate = &plugin_activate,
+    .deactivate = &plugin_deactivate,
+};
+
+fn create_plugin(
+    clap_plugin_factory: [*c]const clap.clap_plugin_factory, 
+    host: [*c]const clap.clap_host, 
+    plugin_id: [*c]const u8
+) callconv(.C) [*c]const clap.clap_plugin {
+    _ = clap_plugin_factory;
+    _ = host;
+    _ = plugin_id;
+
+    return &plugin;
+}
+
+fn get_plugin_count(clap_plugin_factory: [*c]const clap.clap_plugin_factory) callconv(.C) u32 {
+    _ = clap_plugin_factory;
+    return 1;
+}
+
+fn get_plugin_descriptor(
+    clap_plugin_factory: [*c]const clap.clap_plugin_factory, 
+    index: u32
+) callconv(.C) [*c]const clap.clap_plugin_descriptor {
+    _ = clap_plugin_factory;
+    _ = index;
+
+    return &desc;
+}
+
+const factory: clap.clap_plugin_factory = .{
+    .create_plugin = &create_plugin,
+    .get_plugin_count = &get_plugin_count,
+    .get_plugin_descriptor = &get_plugin_descriptor,
+};
+
+fn entry_init(plugin_path: [*c]const u8) callconv(.C) bool {
+    _ = plugin_path;
+
+    return true;
+}
+
+fn entry_deinit() callconv(.C) void {}
+
+fn entry_get_factory(_: [*c]const u8) callconv(.C) ?*const anyopaque {
+    return &factory;
+}
+
+export const clap_entry: clap.clap_plugin_entry = .{ 
+    .clap_version = clap.CLAP_VERSION, 
+    .init = &entry_init, 
+    .deinit = &entry_deinit, 
+    .get_factory = &entry_get_factory 
+};
+```
+
+and the following items are points of interest:
+
+- I had to add `callconv(.C)` to every function, since these Zig functions will be called from C/C++
+- `[*c]const u8` (C pointers) are discouraged in Zig, except when they're the result code generation from a C source file (which is true in my case) &mdash; if I'd use custom Zig bindings for CLAP, I could've written something like `[*c]const clap.clap_plugin_factory` as `*clap.clap_plugin_factory`
+- All `_ = <something>` statements were needed to prevent the compiler from erroring out on unused parameters &mdash; which C does allow &mdash; where these parameters would definitely be used in 'real' plugins
+
+The end result is still C-heavy, and could use some rewriting and optimizing to make it adhere to Zig standards and to not rely on C and its generated Zig types as much. Nevertheless, it's nice to see the end result working and outputting the exact same output as I got with `minimal-clap-plugin-c`, which gives me a good perspective on the differences between the implementations.
+
+I'm not sure what the next step will be, it could be starting development on an actual plug-in with a parameter (which a DAW can read and change without a GUI), or it could be building out the above to a more pure form of Zig code. I'm pretty sure the current set-up would give real Zig developers a heart attack when they'd read it, but I'm eager to learn and to write Zig code that adheres to the Zig standards. I do have to say I was quite surprised at how easy it was to integrate a bunch of C code in Zig code, and how well it works. Makes me hungry for more!
