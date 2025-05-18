@@ -1,8 +1,34 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import PostList from "../components/post-list.astro";
+import ProjectList from "../components/project-list.astro";
+import { getPosts } from "../utils/get-posts";
+import { getProjects } from "../utils/get-projects";
+import EntryList from "../components/entry-list.astro";
+
+const posts = await getPosts();
+const projects = await getProjects();
+
+const content = [...posts, ...projects]
+    .map((entry) => ({ id: entry.id, ...entry.data }))
+    .sort((a, b) => b.dateCreated.valueOf() - a.dateCreated.valueOf())
+    .slice(0, 3);
 ---
 
 <Layout>
-    Someday, this page will introduce me and what I do. Someday! <br /><br /> Meanwhile,
-    go ahead and browse through <a href="/blog">the blogs I have published</a>.
+    <h1>Hi! I'm Thomas Brok</h1>
+
+    a Dutch software engineer working at <a href="https://axxes.nl">Axxes</a>. I
+    like experimenting, tinkering and switching up things.
+
+    <br />
+    <br />
+
+    One moment I'm all Zen with my VS Code config writing TypeScript, and the
+    next I'm spending more time configuring Neovim to write Rust than actually
+    writing Rust.
+
+    <h2 class="mt-8">The latest and greatest (three items) of my content:</h2>
+
+    <EntryList entries={content} />
 </Layout>

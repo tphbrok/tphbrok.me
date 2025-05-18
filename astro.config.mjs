@@ -16,4 +16,7 @@ export default defineConfig({
         tailwind(),
         icon(),
     ],
+    redirects: {
+        "/angular-meetup-22052025": "/projects/angular-meetup-22052025",
+    },
 });

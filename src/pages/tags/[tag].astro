@@ -3,10 +3,13 @@ import { getCollection } from "astro:content";
 import Layout from "../../layouts/Layout.astro";
 import dayjs from "dayjs";
 import PostList from "../../components/post-list.astro";
+import ProjectList from "../../components/project-list.astro";
 import { getPosts } from "../../utils/get-posts";
+import { getProjects } from "../../utils/get-projects";
 
 export async function getStaticPaths() {
     const posts = await getPosts();
+    const projects = await getProjects();
 
     const tags: string[] = [];
 
@@ -16,6 +19,15 @@ export async function getStaticPaths() {
                 tags.push(tag);
             }
         });
+    });
+    projects.forEach((project) => {
+        if (project.data.tags) {
+            project.data.tags.forEach((tag) => {
+                if (!tags.includes(tag)) {
+                    tags.push(tag);
+                }
+            });
+        }
     });
 
     return tags.map((tag) => ({
@@ -30,14 +42,37 @@ const posts = (await getPosts())
     .sort(
         (a, b) => b.data.dateCreated.valueOf() - a.data.dateCreated.valueOf()
     );
+
+const projects = (await getProjects())
+    .filter((project) => project.data.tags && project.data.tags.includes(tag))
+    .sort(
+        (a, b) => b.data.dateCreated.valueOf() - a.data.dateCreated.valueOf()
+    );
 ---
 
 <Layout>
     <h1>Tag: <i>'{tag}'</i></h1>
-    Every blog post I publish has three tags to categorize them. This list shows
-    all blog posts that are tagged with <i>'{tag}'</i>.
+    All content I publish has tags to categorize them. This list shows all content
+    that has been tagged with <i>'{tag}'</i>.
     <br />
     You can find all tags <a href="/tags">here</a>.
 
-    <PostList posts={posts} />
+    <div class="pt-8">
+        {
+            posts.length > 0 && (
+                <>
+                    <h3>Blog Posts</h3>
+                    <PostList posts={posts} />
+                </>
+            )
+        }
+        {
+            projects.length > 0 && (
+                <>
+                    <h3>Projects</h3>
+                    <ProjectList projects={projects} />
+                </>
+            )
+        }
+    </div>
 </Layout>

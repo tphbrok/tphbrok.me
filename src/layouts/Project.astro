@@ -1,0 +1,44 @@
+---
+import type { CollectionEntry } from "astro:content";
+import Layout from "./Layout.astro";
+import dayjs from "dayjs";
+
+type Props = CollectionEntry<"projects">["data"] & { id: string };
+
+const { title, dateCreated, description, id, published, tags } = Astro.props;
+---
+
+<Layout
+    title={title}
+    seo={{
+        description,
+        ogTitle: description,
+        ogType: "project",
+        title: title,
+    }}
+>
+    <article class="flex flex-col gap-y-2">
+        <h1>{title}</h1>
+        <span class="text-xs">
+            published {dayjs(dateCreated).format("MMMM D, YYYY")}
+        </span>
+        <ul class="flex gap-2 flex-wrap">
+            {
+                tags.map((tag) => (
+                    <a
+                        href={`/tags/${tag}`}
+                        class="bg-cyan-100 dark:bg-cyan-950 px-2 h-6 rounded-lg leading-[22px] whitespace-nowrap"
+                    >
+                        {tag}
+                    </a>
+                ))
+            }
+        </ul>
+
+        {!published && <span class="text-red-500">[DRAFT]</span>}
+
+        <div class="pt-8 flex flex-col gap-y-4 leading-[28px]">
+            <slot />
+        </div>
+    </article>
+</Layout>

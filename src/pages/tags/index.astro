@@ -1,11 +1,12 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import { getPosts } from "../../utils/get-posts";
+import { getProjects } from "../../utils/get-projects";
 
 const tags: { name: string; count: number }[] = [];
 
-(await getPosts()).forEach((post) => {
-    post.data.tags.forEach((tag) => {
+[...(await getPosts()), ...(await getProjects())].forEach((item) => {
+    item.data.tags.forEach((tag) => {
         const existingTag = tags.find(
             (existingTag) => existingTag.name === tag
         );
@@ -24,17 +25,19 @@ const tags: { name: string; count: number }[] = [];
 
 <Layout>
     <h1>Tags</h1>
-    Every blog post I publish has three tags to categorize them. This list shows
-    all existing tags and includes how many posts have been categorized with that
-    tag.
+    All content I publish has three tags to categorize them. This list shows all
+    existing tags and includes how many pieces of content have been categorized with
+    that tag.
 
     <ul class="mt-8">
         {
-            tags.map(({ count, name }) => (
-                <li>
-                    <a href={`/tags/${name}`}>{name}</a> ({count})
-                </li>
-            ))
+            tags
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map(({ count, name }) => (
+                    <li>
+                        <a href={`/tags/${name}`}>{name}</a> ({count})
+                    </li>
+                ))
         }
     </ul>
 </Layout>

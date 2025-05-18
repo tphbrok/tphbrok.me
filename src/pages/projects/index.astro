@@ -1,0 +1,21 @@
+---
+import { getCollection } from "astro:content";
+import Layout from "../../layouts/Layout.astro";
+
+import ProjectList from "../../components/project-list.astro";
+import { getProjects } from "../../utils/get-projects";
+
+const projects = (await getProjects()).sort(
+    (a, b) => b.data.dateCreated.valueOf() - a.data.dateCreated.valueOf()
+);
+---
+
+<Layout>
+    <h1>Projects</h1>
+    This list shows all projects I have published, sorted descendingly by date.
+    <br />
+    Every project I publish has three tags to categorize them, which you can browse
+    <a href="/tags">here</a>.
+
+    <ProjectList projects={projects} />
+</Layout>

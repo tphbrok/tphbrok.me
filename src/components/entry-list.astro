@@ -1,0 +1,29 @@
+---
+import type { CollectionEntry } from "astro:content";
+import dayjs from "dayjs";
+
+type Props = {
+    entries: Array<{ id: string } & CollectionEntry<"projects">["data"]>;
+};
+
+const { entries } = Astro.props;
+---
+
+<ul class="mt-8 flex flex-col gap-y-4">
+    {
+        entries.map((entry) => (
+            <li>
+                <a href={`/projects/${entry.id}/`}>
+                    <h4 class="title">
+                        {!entry.published && "[DRAFT] - "}
+                        {entry.title}
+                    </h4>
+                </a>
+                <span class="text-xs">
+                    published {dayjs(entry.dateCreated).format("MMMM D, YYYY")}
+                </span>
+                <p class="indent-0">{entry.description}</p>
+            </li>
+        ))
+    }
+</ul>
